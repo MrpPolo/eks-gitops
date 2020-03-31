@@ -1,0 +1,38 @@
+# Create cluster
+eksctl create cluster -f cluster.yaml --profile xxxx-dev
+
+
+# Init Helm 2.9.1
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+helm init --service-account tiller --upgrade
+
+# Get pods
+kubectl get pods --all-namespaces                                                                           
+NAMESPACE     NAME                             READY   STATUS    RESTARTS   AGE
+kube-system   aws-node-4kpjb                   1/1     Running   0          4m43s
+kube-system   coredns-56678dcf76-l8b7t         1/1     Running   0          11m
+kube-system   coredns-56678dcf76-m5jzh         1/1     Running   0          11m
+kube-system   kube-proxy-8zp8n                 1/1     Running   0          4m43s
+kube-system   tiller-deploy-65784967b8-k25qt   1/1     Running   0          10s
+
+# Install Flux
+helm repo add fluxcd https://charts.fluxcd.io
+kubectl apply -f https://raw.githubusercontent.com/fluxcd/helm-operator/master/deploy/crds.yaml
+
+kubectl create namespace flux
+
+helm upgrade -i flux fluxcd/flux \
+--set git.url=git@github.com:MrpPolo/eks-gitops \
+--namespace flux
+
+helm upgrade -i helm-operator fluxcd/helm-operator \
+--set git.ssh.secretName=flux-git-deploy \
+--namespace flux
+
+brew install fluxctl
+
+fluxctl identity --k8s-fwd-ns flux
+# add ssh-rsa to github deploy key with wirte access 
+
+
